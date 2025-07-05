@@ -2,9 +2,14 @@ const express = require("express");
 const path = require("path");
 const urlRoute = require("./routes/url");
 const { connectToMongoDB } = require("./connect");
-const URL = require("./models/url");
-const staticRoute = require('./routes/staticRouter')
+
 const helmet = require("helmet");
+
+
+
+const URL = require("./models/url");
+const staticRoute = require('./routes/staticRouter');
+const userRoute = require('./routes/user')
 
 
 const app = express();
@@ -36,6 +41,7 @@ app.set('views', path.resolve("./views"));
 
 app.use("/url", urlRoute);
 app.use("/", staticRoute);
+app.use("/user", userRoute);
 
 
 app.get("/:shortId", async (req, res) => {
