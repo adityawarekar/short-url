@@ -1,49 +1,46 @@
 const express = require("express");
 const path = require("path");
-const urlRoute = require("./routes/url");
-const { connectToMongoDB } = require("./connect");
-
+const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
-
-
+const { connectToMongoDB } = require("./connect");
+const { restrictToLoggedinUserOnly } = require('./middlewares/auth');
 
 const URL = require("./models/url");
+const urlRoute = require("./routes/url");
 const staticRoute = require('./routes/staticRouter');
-const userRoute = require('./routes/user')
+const userRoute = require('./routes/user');
 
+const app = express(); // ✅ define here before app.use
 
-const app = express();
 const PORT = 8001;
 
-
+// DB connection
 connectToMongoDB("mongodb://127.0.0.1:27017/short-url")
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.error("MongoDB connection failed:", err));
 
-
+// Middlewares
+app.use(helmet.contentSecurityPolicy({
+  directives: {
+    defaultSrc: ["'self'"],
+    styleSrc: ["'self'", "https://fonts.googleapis.com"],
+    fontSrc: ["'self'", "https://fonts.gstatic.com"],
+  },
+}));
+app.use(cookieParser()); // ✅ now valid
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-//Helmet for csp (allowing Google FOnts )
-app.use(
-  helmet.contentSecurityPolicy({
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-    },
-  })
-);
-
-
+// View engine
 app.set("view engine", "ejs");
 app.set('views', path.resolve("./views"));
 
-app.use("/url", urlRoute);
+// Routes
+app.use("/url", restrictToLoggedinUserOnly, urlRoute);
 app.use("/", staticRoute);
 app.use("/user", userRoute);
 
-
+// Redirect short URL
 app.get("/:shortId", async (req, res) => {
   const shortId = req.params.shortId;
 
@@ -70,5 +67,5 @@ app.get("/:shortId", async (req, res) => {
   }
 });
 
-
+// Start server
 app.listen(PORT, () => console.log(`Server Started at PORT: ${PORT}`));
